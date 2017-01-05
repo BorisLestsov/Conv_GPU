@@ -56,3 +56,5 @@ public:
     LBPFilter();
     unsigned char operator() (const Image&) const;
 };
+
+FilterKernel make_gaussian_kernel(double sigma, int radius);
