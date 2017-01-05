@@ -13,6 +13,7 @@
 #include "functions.cuh"
 #include "matrix.h"
 #include "io.h"
+#include "Filters.h"
 
 int main(int argc, char* argv[]) {
 
@@ -25,7 +26,10 @@ int main(int argc, char* argv[]) {
 		std::cout << "width:   " << img.n_rows << std::endl;
 		std::cout << "height:  " << img.n_cols << std::endl;
 
+		Image m = img.unary_map(UnnormalizedFilter(make_gaussian_kernel(14.0, 7)));
+		cout << "Finished" << endl;
 
+		save_image(m, argv[2]);
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
