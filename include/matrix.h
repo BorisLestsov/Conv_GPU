@@ -96,6 +96,18 @@ public:
 	Matrix<typename std::result_of<UnaryMatrixOperator(Matrix<ValueT>)>::type>
 		unary_map(UnaryMatrixOperator &op) const;
 
+
+
+	template<typename UnaryMatrixOperator>
+		Matrix<typename std::result_of<UnaryMatrixOperator(Matrix<ValueT>)>::type>
+			unary_map_GPU(UnaryMatrixOperator &op) const;
+
+	template<typename UnaryMatrixOperator>
+		Matrix<typename std::result_of<UnaryMatrixOperator(Matrix<ValueT>)>::type>
+			unary_map_GPU(const UnaryMatrixOperator &op) const;
+
+
+
 	// binary_map has the same idea as unary_map,
 	// but now operator takes two neighbourhoods. For example,
 	// if radius = 0, you can make operator, which make elementwise
@@ -119,6 +131,7 @@ public:
 	// cout << a.submatrix(1, 1, 1, 2); // 5 6
 	const Matrix<ValueT> submatrix(uint prow, uint pcol,
 		uint rows, uint cols) const;
+
 
 private:
 	// Stride - number of elements between two rows (needed for efficient
@@ -156,3 +169,4 @@ std::ostream &operator << (std::ostream &out, const Matrix<ValueT> &m)
 
 // Implementation of Matrix class
 #include "matrix.hpp"
+#include "matrix_GPU.cuh"

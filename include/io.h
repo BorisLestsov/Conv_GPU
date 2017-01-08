@@ -5,7 +5,8 @@
 
 #include <tuple>
 
-typedef Matrix<std::tuple<uint, uint, uint>> Image;
+typedef std::tuple<unsigned char, unsigned char, unsigned char> Pixel;
+typedef Matrix<Pixel> Image;
 
 Image load_image(const char*);
 void save_image(const Image&, const char*);

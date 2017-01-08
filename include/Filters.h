@@ -16,15 +16,28 @@ typedef Matrix<double> FilterKernel;
 class UnnormalizedFilter {
     FilterKernel kernel;
 
+    const int isGPU;
+    const int check;
+
+    Pixel _conv_CPU (const Image &m) const;
+    Pixel _conv_GPU (const Image &m) const;
+
+    Pixel (UnnormalizedFilter::*_conv_function)(const Image &m) const;
+
 public:
     const int hor_radius;
     const int vert_radius;
-    const int check;
 
-    UnnormalizedFilter(const FilterKernel & kernel_p, bool check_range = true);
+    UnnormalizedFilter(const FilterKernel & kernel_p, bool isGPU, bool check_range = true);
 
-    tuple<uint, uint, uint> operator () (const Image &m) const;
+    Pixel operator () (const Image &m) const;
+
+    Image convolve(const Image& img) const;
 };
+
+__global__ void compute(unsigned int cols, unsigned char* img, unsigned char* res);
+
+
 
 class FloatFilter{
     FilterKernel kernel;
@@ -37,6 +50,8 @@ public:
     double operator() (const Image&) const;
 };
 
+
+// Filter for local binary patterns detection
 class LBPFilter{
     FilterKernel kernel;
     // counter clock-wise
