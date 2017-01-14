@@ -5,18 +5,13 @@
 
 UnnormalizedFilter::UnnormalizedFilter(
 		const FilterKernel & kernel_p,
-		bool isGPU_f,
 		bool check_range):
 
         kernel (kernel_p),
         hor_radius ( kernel_p.n_cols / 2),
 		vert_radius ( kernel_p.n_rows / 2),
-		isGPU(isGPU_f),
         check(check_range)
 {
-	if (isGPU)
-		_conv_function = &UnnormalizedFilter::_conv_GPU;
-	else
 		_conv_function = &UnnormalizedFilter::_conv_CPU;
 }
 
@@ -68,12 +63,27 @@ Pixel UnnormalizedFilter::operator () (const Image &m) const {
 Image UnnormalizedFilter::convolve(const Image& img) const {
 	unsigned char* d_img, *d_res;
 	unsigned char* img_raw, *img_res;
+	float* d_ker;
+	float* host_ker;
+	unsigned int res_rows = img.n_rows-2*hor_radius;
+	unsigned int res_cols = img.n_cols-2*vert_radius;
+	unsigned int hor_size = hor_radius*2 + 1;
+	unsigned int vert_size = vert_radius*2 + 1;
 
 	img_raw = (unsigned char*) malloc(img.n_rows*img.n_cols*3);
-	img_res = (unsigned char*) malloc(img.n_rows*img.n_cols*3);
+	img_res = (unsigned char*) malloc(res_rows*res_cols*3);
+	host_ker = (float*) malloc(hor_size*vert_size*sizeof(float));
 
-	CUDA_CHECK_RETURN( cudaMalloc((void**) &d_img, img.n_rows*img.n_cols*3) );
-	CUDA_CHECK_RETURN( cudaMalloc((void**) &d_res, img.n_rows*img.n_cols*3) );
+
+	CUDA_CHECK_RETURN( cudaMalloc(
+			(void**) &d_img,
+			img.n_rows*img.n_cols*3) );
+	CUDA_CHECK_RETURN( cudaMalloc(
+			(void**) &d_res,
+			res_rows*res_cols*3) );
+	CUDA_CHECK_RETURN( cudaMalloc(
+			(void**) &d_ker,
+			hor_size*vert_size*sizeof(float)) );
 
 	for (uint i = 0; i < img.n_rows; ++i){
 		for (uint j = 0; j < img.n_cols; ++j){
@@ -83,31 +93,50 @@ Image UnnormalizedFilter::convolve(const Image& img) const {
 		}
 	}
 
+	for (uint i = 0; i < hor_size; ++i){
+		for (uint j = 0; j < vert_size; ++j){
+			host_ker[i*hor_size + j] = kernel(i,j);
+		}
+	}
+
 	CUDA_CHECK_RETURN( cudaMemcpy(d_img, img_raw,
 			img.n_rows*img.n_cols*3,
 			cudaMemcpyHostToDevice)
 			);
+	CUDA_CHECK_RETURN( cudaMemset(d_res,
+				0,
+				res_rows*res_cols*3)
+				);
+	CUDA_CHECK_RETURN( cudaMemcpy(d_ker, host_ker,
+				hor_size*vert_size*sizeof(float) ,
+				cudaMemcpyHostToDevice)
+				);
 
 
-	//dim3 block_grid(n_rows, n_cols, 3);
-	//dim2 thread_grid(n_rows, n_cols);
-	//kernel<<<grid, thread_grid>>>(img.n_cols, d_img, d_res);
-	dim3 block_grid(img.n_rows, img.n_cols);
-	compute<<<block_grid, 3>>>(img.n_cols, d_img, d_res);
+	dim3 block_grid(res_rows, res_cols);
+	dim3 thread_grid(hor_size, vert_size, 3);
+	compute<<<block_grid, thread_grid>>>(
+			res_rows,
+			res_cols,
+			d_img,
+			d_res,
+			hor_radius,
+			vert_radius,
+			d_ker);
 
 
 	CUDA_CHECK_RETURN( cudaMemcpy(img_res, d_res,
-				img.n_rows*img.n_cols*3,
+				res_rows*res_cols*3,
 				cudaMemcpyDeviceToHost)
 				);
 
-	Image res(img.n_rows,  img.n_cols);
+	Image res(res_rows,  res_cols);
 
-	for (uint i = 0; i < img.n_rows; ++i){
-		for (uint j = 0; j < img.n_cols; ++j){
-			get<0>(res(i, j)) = img_res[(i*img.n_cols + j)*3 + 0];
-			get<1>(res(i, j)) = img_res[(i*img.n_cols + j)*3 + 1];
-			get<2>(res(i, j)) = img_res[(i*img.n_cols + j)*3 + 2];
+	for (uint i = 0; i < res_rows; ++i){
+		for (uint j = 0; j < res_cols; ++j){
+			get<0>(res(i, j)) = img_res[(i*res_cols + j)*3 + 0];
+			get<1>(res(i, j)) = img_res[(i*res_cols + j)*3 + 1];
+			get<2>(res(i, j)) = img_res[(i*res_cols + j)*3 + 2];
 		}
 	}
 
@@ -186,15 +215,17 @@ FilterKernel make_gaussian_kernel(double sigma, int radius){
 	double sum = 0.0;
 	for (uint i = 0; i < size; ++i) {
 		for (uint j = 0; j < size; ++j) {
-			gauss_kernel(i, j) = std::exp(-0.5 * (std::pow((i - radius) / sigma, 2.0) + std::pow((j - radius) / sigma, 2.0)))
-						   / (2 * M_PI * std::pow(sigma, 2.0));
+			gauss_kernel(i, j) = std::exp(-0.5 * ((i - radius)*(i - radius) / (sigma*sigma)
+					+ (j - radius)*(j - radius) / (sigma*sigma)))
+						   / (2 * M_PI * sigma*sigma);
 			sum += gauss_kernel(i, j);
 		}
 	}
 
-	for (uint i = 0; i < size; ++i)
-		for (uint j = 0; j < size; ++j)
+	for (uint i = 0; i < size; ++i){
+		for (uint j = 0; j < size; ++j){
 			gauss_kernel(i, j) /= sum;
-
+		}
+	}
 	return gauss_kernel;
 }

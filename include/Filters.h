@@ -11,12 +11,11 @@ using std::get;
 using std::make_tuple;
 
 
-typedef Matrix<double> FilterKernel;
+typedef Matrix<float> FilterKernel;
 
 class UnnormalizedFilter {
     FilterKernel kernel;
 
-    const int isGPU;
     const int check;
 
     Pixel _conv_CPU (const Image &m) const;
@@ -28,15 +27,21 @@ public:
     const int hor_radius;
     const int vert_radius;
 
-    UnnormalizedFilter(const FilterKernel & kernel_p, bool isGPU, bool check_range = true);
+    UnnormalizedFilter(const FilterKernel & kernel_p, bool check_range = true);
 
     Pixel operator () (const Image &m) const;
 
     Image convolve(const Image& img) const;
 };
 
-__global__ void compute(unsigned int cols, unsigned char* img, unsigned char* res);
-
+__global__ void compute(
+		unsigned int rows,
+		unsigned int cols,
+		unsigned char* img,
+		unsigned char* res,
+		unsigned int hor_radius,
+		unsigned int ver_radius,
+		float* ker);
 
 
 class FloatFilter{
