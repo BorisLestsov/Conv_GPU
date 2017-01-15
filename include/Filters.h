@@ -10,6 +10,7 @@ using std::tuple;
 using std::get;
 using std::make_tuple;
 
+#define MAX_FILTER_SIZE 17
 
 typedef Matrix<float> FilterKernel;
 

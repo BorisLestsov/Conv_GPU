@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
 		std::cout << "width:   " << img.n_rows << std::endl;
 		std::cout << "height:  " << img.n_cols << std::endl;
 
-		Image m = img.unary_map_GPU(UnnormalizedFilter(make_gaussian_kernel(14, 4), false));
+		Image m = img.unary_map_GPU(UnnormalizedFilter(make_gaussian_kernel(14, 7), false));
 		cout << "Finished" << endl;
 
 		save_image(m, argv[2]);

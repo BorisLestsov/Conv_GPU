@@ -16,9 +16,8 @@ __global__ void compute(
 		unsigned int ver_radius,
 		float* ker)
 {
-	// 17 is maximum filter size
-	__shared__ float cache1[17*17*3];	// cache for every product
-	__shared__ float cache2[17*3];		// cache for row-reduce in box filter
+	__shared__ float cache1[MAX_FILTER_SIZE*MAX_FILTER_SIZE*3];	// cache for every product
+	__shared__ float cache2[MAX_FILTER_SIZE*3];					// cache for row-reduce in box filter
 
 	unsigned int img_cols = res_cols+2*hor_radius;
 	unsigned int hor_size = 2*hor_radius + 1;
